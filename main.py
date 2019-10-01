@@ -27,9 +27,15 @@ def grabFrames():
         # Display the left image from the numpy array
         cv2.imshow("Image", image_ocv)
 
+def initProcessing():
+    print("Init spatial mapping and camera pose")
+
 def main():
+    signalRecieved = True
+    
     grabFrames()
-    print("Hello World")
+    if(signalRecieved):
+        initProcessing()
 
 if __name__ == "__main__":
     main()
