@@ -5,8 +5,8 @@ import pyzed.sl as sl
 zed = sl.Camera()
 init = sl.InitParameters()
 init.camera_resolution = sl.RESOLUTION.RESOLUTION_HD1080
-init.depth_mode = sl.DEPTH_MODE.DEPTH_MODE_PERFORMANCE
-init.coordinate_units = sl.UNIT.UNIT_METER
+init.depth_mode = sl.DEPTH_MODE.DEPTH_MODE_QUALITY
+init.coordinate_units = sl.UNIT.UNIT_MILLIMETER
 err = zed.open(init)
 if err != sl.ERROR_CODE.SUCCESS :
     print(repr(err))
@@ -20,22 +20,27 @@ runtime.sensing_mode = sl.SENSING_MODE.SENSING_MODE_STANDARD
 
 def grabFrames():
     if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS :
-        # Retrieve the left image in sl.Mat
         zed.retrieve_image(image_zed, sl.VIEW.VIEW_LEFT)
-        # Use get_data() to get the numpy array
-        image_ocv = image_zed.get_data()
-        # Display the left image from the numpy array
+        image_ocv = image_zed.get_data() #numpy array
         cv2.imshow("Image", image_ocv)
 
-def initProcessing():
+def initProcessing(plane, transform):
     print("Init spatial mapping and camera pose")
+    zed.enable_spatial_mapping()
+    zed.enable_tracking()
+    zed.find_floor_plane(plane, transform)
 
 def main():
     signalRecieved = True
+    while not signalRecieved:
     
-    grabFrames()
-    if(signalRecieved):
-        initProcessing()
+    plane = sl.Plane()
+    transform = sl.Transform()
+    initProcessing(plane, transform)
+
+    while True:
+        grabFrames()
+
 
 if __name__ == "__main__":
     main()
