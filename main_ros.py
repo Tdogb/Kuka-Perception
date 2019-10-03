@@ -18,14 +18,14 @@ def image_callback(data):
     image = alpha_image[:,:,:3]
     #Table location
     mask = np.zeros(image.shape, dtype=np.uint8)
-    contours, heirarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    #contours, heirarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     #end of table mask
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     image_threshold_rgb = cv2.inRange(image, lower_color_bounds, upper_color_bounds)
     image_threshold_hsv = cv2.inRange(image, lower_hsv_bounds, upper_hsv_bounds)
     image_threshold = cv2.bitwise_and(cv2.bitwise_not(image_threshold_hsv), image_threshold_rgb)
-    cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
-    ros_image = bridge.cv2_to_imgmsg(image)
+    #cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
+    ros_image = bridge.cv2_to_imgmsg(image_threshold)
     image_pub.publish(ros_image)
 
 rospy.init_node("perception_node")
