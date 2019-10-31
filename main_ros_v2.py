@@ -6,7 +6,6 @@ from sensor_msgs.msg import Image, PointCloud, PointCloud2
 from sklearn.neighbors import NearestNeighbors
 from cv_bridge import CvBridge, CvBridgeError
 import math
-import tensorflow as tf
 import matplotlib.pyplot as plt
 
 bridge = CvBridge()
@@ -52,13 +51,22 @@ def image_callback(data):
             i+=1
         contouri +=1
     # Begin ICP
-
     tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [4,-23],[4,18],[17,18],[17,25.3]])
+    rotationMatrix = np.matrix([[0,-1],[1,0]])
+    tMeshMat = np.asmatrix(tMesh).T
+    tRotatedMat = np.empty_like(tMeshMat)
+    for i in range(0, np.size(tMeshMat,1)):
+        tRotatedMat[:,i] = rotationMatrix * tMeshMat[:,i]
+    tRotatedMeshArr = np.asarray(tRotatedMat.T)
+    #print(tMesh)
+    #print(tRotatedMeshArr)
+    #print(" ")
+    testMesh = np.array([[0,0],[2,1],[3,2],[4,4]])
+    #generateRefMesh(testMesh, 4, 16)
     #print(contours[output_contour_index].shape[0])
-    a,b,c = best_fit_transform(contours[output_contour_index],generateRefMesh(tMesh,contours[output_contour_index].shape[0]))
-    #print(b)
 
-    #print(contours[0])
+    #a,b,c = best_fit_transform(tMesh, tRotatedMeshArr)
+    #print(b)
     # End ICP
 
     cv2.drawContours(image, contours, -1, (0, 255, 0), 1)
@@ -66,46 +74,40 @@ def image_callback(data):
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
-    #print(filenum)
     filename = 'I.' + str(filenum) + '.png'
     filenum+=1  
     #cv2.imwrite(filename,sub_images[0])
     #time.sleep(0.25)
 
+    print("tshape")
+    print("Contour shape")
+    # print(contours.shape)
+    #print(contours[output_contour_index])
+    print(tMesh.shape[0])
+    print(contours[output_contour_index].shape[0])
+    a,b,c = best_fit_transform(contours[output_contour_index],generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
+    print(b)
+
 rospy.init_node("perception_node")
 image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, image_callback)
 
 def generateRefMesh(inputArray, desiredSize):
-    size = inputArray.shape[0]
-    print(size)
-    print(desiredSize)
-    points_at_each_segment = math.floor(desiredSize/size)
-    output = np.zeros((desiredSize,2))
-    for n in range(0, size-2):
-        pt0 = inputArray[n]
-        pt1 = inputArray[n+1]
-        x_slope = pt0[0]-pt1[0]
-        y_slope = pt0[1]-pt1[1]
-        print(x_slope)
-        dx = x_slope/points_at_each_segment
-        dy = y_slope/points_at_each_segment
-        currentPoint = inputArray[n]
-        for i in range(0,points_at_each_segment-1):
-            index = (n*points_at_each_segment)+i
-            if i == 0:
-                output[index, 0] = currentPoint[0] + dx
-                output[index, 1] = currentPoint[1] + dy
-            else:
-                output[index, 0] = output[index-1, 0] + dx
-                output[index, 1] = output[index-1, 1] + dy
-    # for i in range(0, desiredSize%size):
-    #     index = size*points_at_each_segment+i
-    outputTranspose = output.T
-    #plt.scatter(output.T[0], output.T[1])
-    #plt.show()
+    arraySize = inputArray.shape[0]
+    points_at_each_segment = math.floor(desiredSize/arraySize)
+    points_at_first_segment = desiredSize - (points_at_each_segment*arraySize)
+    output = np.zeros((points_at_first_segment,2))
+    output[:,0] = np.linspace(inputArray[0,0],inputArray[1,0],points_at_first_segment)
+    output[:,1] = np.linspace(inputArray[0,1],inputArray[1,1],points_at_first_segment)
     #print(output)
+    for i in range(1, arraySize-1):
+        tempArray = np.vstack((np.linspace(inputArray[i,0],inputArray[i+1,0],points_at_each_segment),np.linspace(inputArray[i,1],inputArray[i+1,1],points_at_each_segment)))
+        #print(tempArray)
+        row0 = np.concatenate((output[0,:],tempArray[0,:]))
+        row1 = np.concatenate((output[1,:],tempArray[1,:]))
+        output = np.vstack((row0,row1))
+    print(output.shape)
+    print(inputArray.shape)
     return output
-
 
 def best_fit_transform(A, B):
     '''
