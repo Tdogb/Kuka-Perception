@@ -7,6 +7,7 @@ from sklearn.neighbors import NearestNeighbors
 from cv_bridge import CvBridge, CvBridgeError
 import math
 import matplotlib.pyplot as plt
+import pdb
 
 bridge = CvBridge()
 image_pub = rospy.Publisher("image_publisher_zed_camera", Image, queue_size=10)
@@ -77,15 +78,16 @@ def image_callback(data):
     filename = 'I.' + str(filenum) + '.png'
     filenum+=1  
     #cv2.imwrite(filename,sub_images[0])
-    #time.sleep(0.25)
+    time.sleep(1)
 
-    print("tshape")
-    print("Contour shape")
+    # print("tshape")
+    # print("Contour shape")
     # print(contours.shape)
     #print(contours[output_contour_index])
-    print(tMesh.shape[0])
-    print(contours[output_contour_index].shape[0])
-    a,b,c = best_fit_transform(contours[output_contour_index],generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
+    # print(tMesh.shape[0])
+    print("Contours shape")
+    print(contours[output_contour_index].shape)
+    a,b,c = best_fit_transform(np.squeeze(contours[output_contour_index]),generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
     print(b)
 
 rospy.init_node("perception_node")
@@ -94,20 +96,49 @@ image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, ima
 def generateRefMesh(inputArray, desiredSize):
     arraySize = inputArray.shape[0]
     points_at_each_segment = math.floor(desiredSize/arraySize)
-    points_at_first_segment = desiredSize - (points_at_each_segment*arraySize)
-    output = np.zeros((points_at_first_segment,2))
-    output[:,0] = np.linspace(inputArray[0,0],inputArray[1,0],points_at_first_segment)
-    output[:,1] = np.linspace(inputArray[0,1],inputArray[1,1],points_at_first_segment)
+    points_at_first_segment = desiredSize - (points_at_each_segment*(arraySize-1))
+    output = np.zeros((2,points_at_first_segment))
+    # print(points_at_each_segment)
+    # print(points_at_first_segment)
     #print(output)
-    for i in range(1, arraySize-1):
-        tempArray = np.vstack((np.linspace(inputArray[i,0],inputArray[i+1,0],points_at_each_segment),np.linspace(inputArray[i,1],inputArray[i+1,1],points_at_each_segment)))
-        #print(tempArray)
-        row0 = np.concatenate((output[0,:],tempArray[0,:]))
-        row1 = np.concatenate((output[1,:],tempArray[1,:]))
+    output[0,:] = (np.linspace(inputArray[0,0],inputArray[1,0],points_at_first_segment))
+    output[1,:] = (np.linspace(inputArray[0,1],inputArray[1,1],points_at_first_segment))
+    #print(output)
+
+    for i in range(0, arraySize-1):
+        # print("Linspace")
+        # print(np.linspace(inputArray[i,0],inputArray[i+1,0],points_at_each_segment,endpoint=False))
+        tempArray = np.vstack((np.linspace(inputArray[i,0],inputArray[i+1,0],points_at_each_segment, endpoint=False),np.linspace(inputArray[i,1],inputArray[i+1,1],points_at_each_segment, endpoint=False)))
+        row0 = (np.append(output[0,:],tempArray[0,:])).T
+        row1 = (np.append(output[1,:],tempArray[1,:])).T
         output = np.vstack((row0,row1))
+    #     print("FirstOutput")
+    #     print(output)
+    #     print("FirstOutput Part")
+    #     print(output[0,:])
+    #     print("TempArray")
+    #     print(tempArray)
+    #     print("TempArray Part")
+    #     print(tempArray[0,:])
+    #     print("Row 0: ")
+    #     print(row0)
+    #     print("Row 1")
+    #     print(row1)
+    #     print("Output")
+    #     print(output)
+    #     print("Done")
+    # print(output)
     print(output.shape)
-    print(inputArray.shape)
-    return output
+    print("Desired Size")
+    print(desiredSize)
+    # print("First Step size")
+    # print(points_at_first_segment)
+    # print("Normal step size")
+    # print(points_at_each_segment)
+    # print(inputArray.shape)
+    # plt.scatter(output.T[:,0],output.T[:,1])
+    # plt.show()
+    return output.T
 
 def best_fit_transform(A, B):
     '''
