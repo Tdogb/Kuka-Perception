@@ -52,7 +52,8 @@ def image_callback(data):
             i+=1
         contouri +=1
     # Begin ICP
-    tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [4,-23],[4,18],[17,18],[17,25.3]])
+    # tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [4,-23],[4,18],[17,18],[17,25.3]])
+    tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [17,25.3],[17,18],[4,18],[4,-23]])
     rotationMatrix = np.matrix([[0,-1],[1,0]])
     tMeshMat = np.asmatrix(tMesh).T
     tRotatedMat = np.empty_like(tMeshMat)
@@ -70,6 +71,20 @@ def image_callback(data):
     #print(b)
     # End ICP
 
+    print("Contours shape")
+    print(contours[output_contour_index].shape)
+    a,b,c = best_fit_transform(np.squeeze(contours[output_contour_index]),generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
+    print(b)
+    vec = np.matrix([[0],[1]])
+    movedVec = np.squeeze(10*(b*vec))
+    print("Moved vec")
+    print(movedVec[0,1])
+    first = math.ceil(movedVec[0,0])+200
+    second = math.ceil(movedVec[0,1])+200
+    print(first)
+    print(second)
+    cv2.arrowedLine(image, (200,200), (first,second), (0,255,0))
+
     cv2.drawContours(image, contours, -1, (0, 255, 0), 1)
     ros_image = bridge.cv2_to_imgmsg(sub_images[0])
     ros_image2 = bridge.cv2_to_imgmsg(image)
@@ -78,17 +93,13 @@ def image_callback(data):
     filename = 'I.' + str(filenum) + '.png'
     filenum+=1  
     #cv2.imwrite(filename,sub_images[0])
-    time.sleep(1)
 
     # print("tshape")
     # print("Contour shape")
     # print(contours.shape)
     #print(contours[output_contour_index])
     # print(tMesh.shape[0])
-    print("Contours shape")
-    print(contours[output_contour_index].shape)
-    a,b,c = best_fit_transform(np.squeeze(contours[output_contour_index]),generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
-    print(b)
+
 
 rospy.init_node("perception_node")
 image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, image_callback)
