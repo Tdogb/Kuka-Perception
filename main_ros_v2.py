@@ -29,7 +29,12 @@ def image_callback(data):
     grayscale = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(grayscale,100,200)
 
-    ros_image = bridge.cv2_to_imgmsg(grayscale)
+    plt.subplot(121),plt.imshow(image,cmap = 'gray')
+    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    plt.subplot(122),plt.imshow(edges,cmap = 'gray')
+    plt.show()
+
+    ros_image = bridge.cv2_to_imgmsg(edges)
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
@@ -37,9 +42,13 @@ def image_callback(data):
     filenum+=1  
     #cv2.imwrite(filename,sub_images[0])
 
+def depth_callback(data):
+    if false:
+        continue
 
 rospy.init_node("perception_node")
 image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, image_callback)
+depth_sub = rospy.Subscriber("/zed/zed_node/depth/depth_registered", Image, depth_callback)
 
 def generateRefMesh(inputArray, desiredSize):
     arraySize = inputArray.shape[0]
@@ -54,38 +63,13 @@ def generateRefMesh(inputArray, desiredSize):
     #print(output)
 
     for i in range(0, arraySize-1):
-        # print("Linspace")
-        # print(np.linspace(inputArray[i,0],inputArray[i+1,0],points_at_each_segment,endpoint=False))
         tempArray = np.vstack((np.linspace(inputArray[i,0],inputArray[i+1,0],points_at_each_segment, endpoint=False),np.linspace(inputArray[i,1],inputArray[i+1,1],points_at_each_segment, endpoint=False)))
         row0 = (np.append(output[0,:],tempArray[0,:])).T
         row1 = (np.append(output[1,:],tempArray[1,:])).T
         output = np.vstack((row0,row1))
-    #     print("FirstOutput")
-    #     print(output)
-    #     print("FirstOutput Part")
-    #     print(output[0,:])
-    #     print("TempArray")
-    #     print(tempArray)
-    #     print("TempArray Part")
-    #     print(tempArray[0,:])
-    #     print("Row 0: ")
-    #     print(row0)
-    #     print("Row 1")
-    #     print(row1)
-    #     print("Output")
-    #     print(output)
-    #     print("Done")
-    # print(output)
     print(output.shape)
     print("Desired Size")
     print(desiredSize)
-    # print("First Step size")
-    # print(points_at_first_segment)
-    # print("Normal step size")
-    # print(points_at_each_segment)
-    # print(inputArray.shape)
-    # plt.scatter(output.T[:,0],output.T[:,1])
-    # plt.show()
     return output.T
 
 def best_fit_transform(A, B):
