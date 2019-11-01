@@ -27,8 +27,10 @@ def image_callback(data):
     image_large = alpha_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     # image_threshold_hsv = cv2.inRange(image, (0,61,98), (33,255,255))
     image_threshold_hsv = cv2.inRange(image, (0,61,98), (33,255,255))
+    image_oshu = cv2.threshold(grayscale, 0, 255, cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
 
     contour_image = np.uint8(image_threshold_hsv)
     contours, heirarchy = cv2.findContours(contour_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -86,7 +88,7 @@ def image_callback(data):
     cv2.arrowedLine(image, (200,200), (first,second), (0,255,0))
 
     cv2.drawContours(image, contours, -1, (0, 255, 0), 1)
-    ros_image = bridge.cv2_to_imgmsg(sub_images[0])
+    ros_image = bridge.cv2_to_imgmsg(image_oshu)
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
