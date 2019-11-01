@@ -26,79 +26,16 @@ def image_callback(data):
     alpha_image = bridge.imgmsg_to_cv2(data)
     image_large = alpha_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    # image_threshold_hsv = cv2.inRange(image, (0,61,98), (33,255,255))
-    image_threshold_hsv = cv2.inRange(image, (0,61,98), (33,255,255))
+    grayscale = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
+    edges = cv2.Canny(grayscale,100,200)
 
-    contour_image = np.uint8(image_threshold_hsv)
-    contours, heirarchy = cv2.findContours(contour_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-
-    sub_images = [None] * len(contours)
-    i = 0
-    contouri = 0
-    output_contour_index = 0
-    for c in contours:
-        if cv2.contourArea(contours[contouri]) > 30:
-            output_contour_index = contouri
-            rect = cv2.boundingRect(c)
-            x,y,w,h = rect
-            if w > h:
-                h = w
-            if h > w:
-                w = h
-            sub_images[i] = cv2.getRectSubPix(image,(w+20,h+20),(x+(w/2),y+(h/2)))
-            sub_images[i] = cv2.resize(sub_images[i], (64,64))
-            #cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1
-            i+=1
-        contouri +=1
-    # Begin ICP
-    # tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [4,-23],[4,18],[17,18],[17,25.3]])
-    tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [17,25.3],[17,18],[4,18],[4,-23]])
-    rotationMatrix = np.matrix([[0,-1],[1,0]])
-    tMeshMat = np.asmatrix(tMesh).T
-    tRotatedMat = np.empty_like(tMeshMat)
-    for i in range(0, np.size(tMeshMat,1)):
-        tRotatedMat[:,i] = rotationMatrix * tMeshMat[:,i]
-    tRotatedMeshArr = np.asarray(tRotatedMat.T)
-    #print(tMesh)
-    #print(tRotatedMeshArr)
-    #print(" ")
-    testMesh = np.array([[0,0],[2,1],[3,2],[4,4]])
-    #generateRefMesh(testMesh, 4, 16)
-    #print(contours[output_contour_index].shape[0])
-
-    #a,b,c = best_fit_transform(tMesh, tRotatedMeshArr)
-    #print(b)
-    # End ICP
-
-    print("Contours shape")
-    print(contours[output_contour_index].shape)
-    a,b,c = best_fit_transform(np.squeeze(contours[output_contour_index]),generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
-    print(b)
-    vec = np.matrix([[0],[1]])
-    movedVec = np.squeeze(10*(b*vec))
-    print("Moved vec")
-    print(movedVec[0,1])
-    first = math.ceil(movedVec[0,0])+200
-    second = math.ceil(movedVec[0,1])+200
-    print(first)
-    print(second)
-    cv2.arrowedLine(image, (200,200), (first,second), (0,255,0))
-
-    cv2.drawContours(image, contours, -1, (0, 255, 0), 1)
-    ros_image = bridge.cv2_to_imgmsg(sub_images[0])
+    ros_image = bridge.cv2_to_imgmsg(grayscale)
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
     filename = 'I.' + str(filenum) + '.png'
     filenum+=1  
     #cv2.imwrite(filename,sub_images[0])
-
-    # print("tshape")
-    # print("Contour shape")
-    # print(contours.shape)
-    #print(contours[output_contour_index])
-    # print(tMesh.shape[0])
 
 
 rospy.init_node("perception_node")
