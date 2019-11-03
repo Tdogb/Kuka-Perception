@@ -1,17 +1,15 @@
+import sys
 import time
 import rospy
 import cv2
-import numpy as np
-from sensor_msgs.msg import Image, PointCloud, PointCloud2
-from sklearn.neighbors import NearestNeighbors
-from cv_bridge import CvBridge, CvBridgeError
 import math
-import matplotlib.pyplot as plt
 import pdb
-
-bridge = CvBridge()
-image_pub = rospy.Publisher("image_publisher_zed_camera", Image, queue_size=10)
-image_pub2 = rospy.Publisher("image_2", Image, queue_size=10)
+import numpy as np
+import pyzed.sl as sl
+from sklearn.neighbors import NearestNeighbors
+import matplotlib.pyplot as plt
+from sensor_msgs.msg import Image, PointCloud, PointCloud2
+from cv_bridge import CvBridge, CvBridgeError
 
 img_width = 640
 img_height = 360
@@ -20,35 +18,36 @@ upper_color_bounds = np.array([255,255,255])
 lower_color_bounds = np.array([75,75,100])
 
 filenum = 0
+distanceFromGround = 1
 
-def image_callback(data):
+zed = sl.Camera()
+
+def image_callback(src_image, src_depth):
     global filenum
-    alpha_image = bridge.imgmsg_to_cv2(data)
-    image_large = alpha_image[:,:,:3]
+    image_large = src_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
+    # hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+    #rangeImage = cv2.inRange(hsv, (0,10,10),(360,255,255))
+#    maskedImage = cv2.bitwise_and(rangeImage, image)
+    depth_mask = np.empty_like(image_large)
+    lowerIndices = src_depth <= 3
+    upperIndices = src_depth > 3
+    depth_mask[lowerIndices] = 255
+    depth_mask[upperIndices] = 0 
+     
     grayscale = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(grayscale,100,200)
-
+    edges = cv2.Canny(       grayscale,100,200)
+    contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # ret, edges = cv2.threshold(grayscale,0,255,cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    for i in range(0, len(contours)):
+        if cv2.contourArea(contours[i]) > 30:
+            cv2.drawContours(image, contours, i, (0,255,0), 2)
     plt.subplot(121),plt.imshow(image,cmap = 'gray')
     plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    plt.subplot(122),plt.imshow(edges,cmap = 'gray')
+    plt.subplot(122),plt.imshow(depth_mask,cmap = 'gray')
     plt.show()
-
-    ros_image = bridge.cv2_to_imgmsg(edges)
-    ros_image2 = bridge.cv2_to_imgmsg(image)
-    image_pub.publish(ros_image)
-    image_pub2.publish(ros_image2)
     filename = 'I.' + str(filenum) + '.png'
     filenum+=1  
-    #cv2.imwrite(filename,sub_images[0])
-
-def depth_callback(data):
-    if false:
-        continue
-
-rospy.init_node("perception_node")
-image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, image_callback)
-depth_sub = rospy.Subscriber("/zed/zed_node/depth/depth_registered", Image, depth_callback)
 
 def generateRefMesh(inputArray, desiredSize):
     arraySize = inputArray.shape[0]
@@ -188,5 +187,49 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     return T, distances, i
 
 
+def receiveData():
+    image_zed = sl.Mat(zed.get_resolution().width, zed.get_resolution().height, sl.MAT_TYPE.MAT_TYPE_8U_C4)
+    depth_zed = sl.Mat(zed.get_resolution().width, zed.get_resolution().height, sl.MAT_TYPE.MAT_TYPE_32F_C1)
+    
+    runtime = sl.RuntimeParameters()
+    runtime.sensing_mode = sl.SENSING_MODE.SENSING_MODE_STANDARD
+    while zed.grab(runtime) != sl.ERROR_CODE.SUCCESS:
+        pass
+    if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+        # Retrieve the left image in sl.Mat
+        zed.retrieve_image(image_zed, sl.VIEW.VIEW_LEFT)
+        zed.retrieve_measure(depth_zed, sl.MEASURE.MEASURE_DEPTH)
+        # Use get_data() to get the numpy array
+        image_callback(image_zed.get_data(), depth_zed.get_data())
+    else:
+        print("Failed")
+
+def initCamera():
+    # Create a ZED camera object
+    # Set configuration parameters
+    init = sl.InitParameters()
+    init.camera_resolution = sl.RESOLUTION.RESOLUTION_HD1080
+    init.depth_mode = sl.DEPTH_MODE.DEPTH_MODE_PERFORMANCE
+    init.coordinate_units = sl.UNIT.UNIT_METER
+    if len(sys.argv) >= 2 :
+        init.svo_input_filename = sys.argv[1]
+
+    # Open the camera
+    err = zed.open(init)
+    if err != sl.ERROR_CODE.SUCCESS :
+        print(repr(err))
+        zed.close()
+        exit(1)
+    zed.set_camera_settings(sl.CAMERA_SETTINGS.CAMERA_SETTINGS_EXPOSURE, -1, True)
+
+def main():
+    key = ' '
+    while key != 123:
+        receiveData()
+        zed.close()
+        key = cv2.waitKey(10)
+
 if __name__ == "__main__":
-    rospy.spin()
+    zed.close()
+    initCamera()
+    main()
