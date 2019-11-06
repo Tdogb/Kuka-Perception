@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from sensor_msgs.msg import Image, PointCloud, PointCloud2
 from cv_bridge import CvBridge, CvBridgeError
 
-img_width = 640
+img_width = 1280
 img_height = 360
 
 upper_color_bounds = np.array([255,255,255])
@@ -21,31 +21,52 @@ filenum = 0
 distanceFromGround = 1
 
 zed = sl.Camera()
+ax1 = plt.subplot(121)
+ax2 = plt.subplot(122)
+runOnce = True
 
-def image_callback(src_image, src_depth):
+tempImage = np.zeros((img_height,img_width,3))
+
+im1 = ax1.imshow(tempImage,cmap = 'gray')
+im2 = ax2.imshow(tempImage,cmap = 'gray')
+plt.ion()
+
+def image_callback(src_image):
     global filenum
     image_large = src_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
-    # hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
-    #rangeImage = cv2.inRange(hsv, (0,10,10),(360,255,255))
-#    maskedImage = cv2.bitwise_and(rangeImage, image)
-    depth_mask = np.empty_like(image_large)
-    lowerIndices = src_depth <= 3
-    upperIndices = src_depth > 3
-    depth_mask[lowerIndices] = 255
-    depth_mask[upperIndices] = 0 
-     
+
     grayscale = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(       grayscale,100,200)
+    edges = cv2.Canny(grayscale,80,200)
     contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # ret, edges = cv2.threshold(grayscale,0,255,cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    indicies = []
+    tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [17,25.3],[17,18],[4,18],[4,-23]])
+    empty_image = np.empty_like(image)
     for i in range(0, len(contours)):
-        if cv2.contourArea(contours[i]) > 30:
-            cv2.drawContours(image, contours, i, (0,255,0), 2)
-    plt.subplot(121),plt.imshow(image,cmap = 'gray')
-    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    plt.subplot(122),plt.imshow(depth_mask,cmap = 'gray')
-    plt.show()
+        if cv2.contourArea(contours[i]) > 1000:
+            #cv2.drawContours(image, contours, i, (0,255,0), 1)
+            #epsilon = 0.0001*cv2.arcLength(contours[i], True)
+            #approx = cv2.approxPolyDP(contours[i], epsilon, True)
+            #cv2.drawContours(empty_image, approx, -1, (0,255,0),1)
+            indicies.append(i)
+    if(len(indicies) > 0):
+        for i in indicies:
+            a,b,c = best_fit_transform(np.squeeze(contours[i]), generateRefMesh(tMesh, contours[i].shape[0]))
+            rect = cv2.minAreaRect(contours[i])
+            box = np.int0(cv2.boxPoints(rect))
+            boxTranspose = box.T
+            centroid = np.array([np.mean(boxTranspose[0]), np.mean(boxTranspose[1])])
+            print(box)
+            vec = np.matrix([[0],[1]])
+            movedVec = np.squeeze(40*(b*vec))
+            first = math.ceil(movedVec[0,0]+centroid[0])
+            second = math.ceil(movedVec[0,1]+centroid[1])
+            print(first)
+            print(second)
+            cv2.arrowedLine(image, (math.ceil(centroid[0]),math.ceil(centroid[1])), (first,second), (0,255,0),2)
+    im1.set_data(image)
+    im2.set_data(edges)
     filename = 'I.' + str(filenum) + '.png'
     filenum+=1  
 
@@ -200,9 +221,9 @@ def receiveData():
         zed.retrieve_image(image_zed, sl.VIEW.VIEW_LEFT)
         zed.retrieve_measure(depth_zed, sl.MEASURE.MEASURE_DEPTH)
         # Use get_data() to get the numpy array
-        image_callback(image_zed.get_data(), depth_zed.get_data())
-    else:
-        print("Failed")
+        image_callback(image_zed.get_data())
+    # else:
+    #     print("Failed")
 
 def initCamera():
     # Create a ZED camera object
@@ -226,10 +247,18 @@ def main():
     key = ' '
     while key != 123:
         receiveData()
-        zed.close()
-        key = cv2.waitKey(10)
+        #zed.close()
+        plt.pause(0.1)
+        #key = cv2.waitKey(10)
+
+def staticImageMain():
+    img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/TImage.png")
+    image_callback(img)
 
 if __name__ == "__main__":
-    zed.close()
-    initCamera()
-    main()
+    #zed.close()
+    #initCamera()
+    #main()
+    staticImageMain()
+    plt.ioff()
+    plt.show()
