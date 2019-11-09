@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 from sensor_msgs.msg import Image, PointCloud, PointCloud2
 from cv_bridge import CvBridge, CvBridgeError
 
-img_width = 1280
+usingZed = False
+
+img_width = 640 if usingZed else 1280
 img_height = 360
 
 upper_color_bounds = np.array([255,255,255])
@@ -21,9 +23,19 @@ filenum = 0
 distanceFromGround = 1
 
 zed = sl.Camera()
-ax1 = plt.subplot(121)
-ax2 = plt.subplot(122)
-runOnce = True
+fig = plt.figure(1)
+fig2 = plt.figure(2)
+
+ax1 = fig.add_subplot(121)
+ax2 = fig.add_subplot(122)
+
+ax3 = fig2.add_subplot(121)
+
+tempMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [17,25.3],[17,18],[4,18],[4,-23]])
+ax3.set_xlim(0,200)
+ax3.set_ylim(500,700)
+#sc1 = ax3.scatter(tempMesh[:,0],tempMesh[:,1])
+
 
 tempImage = np.zeros((img_height,img_width,3))
 
@@ -42,7 +54,9 @@ def image_callback(src_image):
     # ret, edges = cv2.threshold(grayscale,0,255,cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     indicies = []
     tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [17,25.3],[17,18],[4,18],[4,-23]])
+
     empty_image = np.empty_like(image)
+    #print(hierarchy)
     for i in range(0, len(contours)):
         if cv2.contourArea(contours[i]) > 1000:
             #cv2.drawContours(image, contours, i, (0,255,0), 1)
@@ -52,23 +66,67 @@ def image_callback(src_image):
             indicies.append(i)
     if(len(indicies) > 0):
         for i in indicies:
-            a,b,c = best_fit_transform(np.squeeze(contours[i]), generateRefMesh(tMesh, contours[i].shape[0]))
+            refMesh = generateRefMesh(tMesh, contours[i].shape[0])
+            # sc1.set_data(refMesh[:,0],refMesh[:,1])
+            # refMesh += 100
+            # cv2.polylines(image, np.int32([refMesh]), False, (0,255,0))
+            # for b in range(0, refMesh.shape[0] - 1):
+            #     cv2.line(image, refMesh[b,:], refMesh[b+1,:], (255,0,0))
+            squeezedContours = np.squeeze(contours[i])
+            a,b,c = best_fit_transform(squeezedContours, refMesh)
+
+            
+            #ax3.scatter(refMesh[:,0],refMesh[:,1], color=['red'])
+
+
+            #print(refMesh[:,0])
+            # print(c)
+            # cInv = -c
+            transformedContours = np.asmatrix(squeezedContours)
+            for col in range(0,squeezedContours.shape[0]):
+                print(transformedContours[col,:].T + c)
+                transformedContours[col,:] = np.squeeze(np.squeeze(transformedContours[col,:].T)+c)
+            print(np.squeeze(np.asarray(transformedContours)[:,0]))
+            transformedContours = np.asarray(transformedContours)
+            ax3.scatter(transformedContours[:,0], transformedContours[:,1], color=['green'])
+            ax3.scatter(squeezedContours[:,0],squeezedContours[:,1],color=['blue'])
             rect = cv2.minAreaRect(contours[i])
             box = np.int0(cv2.boxPoints(rect))
             boxTranspose = box.T
             centroid = np.array([np.mean(boxTranspose[0]), np.mean(boxTranspose[1])])
-            print(box)
             vec = np.matrix([[0],[1]])
+            # for thetaDeg in range(0,360):
+            #     theta = 2*math.pi*(thetaDeg/360)
+            #     b = np.array([[math.cos(theta),-math.sin(theta)],[math.sin(theta),math.cos(theta)]])
             movedVec = np.squeeze(40*(b*vec))
+            print("MovedVec")
+            #print(movedVec)
+            transformedRefMesh = np.asmatrix(refMesh)
+            #print(refMesh.shape[0])
+            for col in range(0,refMesh.shape[0]):
+                #c = c * np.array([[0],
+                #                [-1]])
+                # print("Col")
+                # print(refMesh[col,:])
+                # print(c)
+                # print(b*np.asmatrix(transformedRefMesh[col,:]).T)
+                rotationMatrix = np.matrix([[-1,0],[0,-1]])
+                transformedRefMesh[col,:] = np.squeeze(rotationMatrix*transformedRefMesh[col,:].T)
+                transformedRefMesh[col,:] = np.squeeze(b*(transformedRefMesh[col,:].T))
+                transformedRefMesh[col,:] = np.add(refMesh[col,:], centroid)
+            #print(transformedRefMesh)
+            cv2.polylines(image, np.int32([transformedRefMesh]), False, (0,255,0))
+            # for pt in np.int32(transformedRefMesh):
+            #     print(pt)
+            #     cv2.circle(image, (pt[0,0],pt[0,1]), 1,(255,0,0))
+            #transformedRefMesh = rotatedRefMesh
             first = math.ceil(movedVec[0,0]+centroid[0])
             second = math.ceil(movedVec[0,1]+centroid[1])
-            print(first)
-            print(second)
             cv2.arrowedLine(image, (math.ceil(centroid[0]),math.ceil(centroid[1])), (first,second), (0,255,0),2)
     im1.set_data(image)
-    im2.set_data(edges)
+    im2.set_data(cv2.cvtColor(edges,cv2.COLOR_GRAY2RGB))
     filename = 'I.' + str(filenum) + '.png'
-    filenum+=1  
+    filenum+=1
 
 def generateRefMesh(inputArray, desiredSize):
     arraySize = inputArray.shape[0]
@@ -87,9 +145,9 @@ def generateRefMesh(inputArray, desiredSize):
         row0 = (np.append(output[0,:],tempArray[0,:])).T
         row1 = (np.append(output[1,:],tempArray[1,:])).T
         output = np.vstack((row0,row1))
-    print(output.shape)
-    print("Desired Size")
-    print(desiredSize)
+    # print(output.shape)
+    # print("Desired Size")
+    # print(desiredSize)
     return output.T
 
 def best_fit_transform(A, B):
@@ -248,7 +306,7 @@ def main():
     while key != 123:
         receiveData()
         #zed.close()
-        plt.pause(0.1)
+        plt.pause(0.001)
         #key = cv2.waitKey(10)
 
 def staticImageMain():
@@ -256,9 +314,11 @@ def staticImageMain():
     image_callback(img)
 
 if __name__ == "__main__":
-    #zed.close()
-    #initCamera()
-    #main()
-    staticImageMain()
+    if usingZed:
+        zed.close()
+        initCamera()
+        main()
+    else:
+        staticImageMain()
     plt.ioff()
     plt.show()
