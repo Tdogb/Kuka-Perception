@@ -34,28 +34,48 @@ def image_callback(image):
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     highestContourArea = cv2.contourArea(contours[0])
     subImages = []
+    threshedImage = cv2.bitwise_and(image,image,mask=mask)
+    im2.set_data(mask)
     for cnt in contours:
-        if cv2.contourArea(cnt) > highestContourArea - (highestContourArea/10):
+        if cv2.contourArea(cnt) > highestContourArea - (highestContourArea/2):
             rect = cv2.boundingRect(cnt)
             x,y,w,h = rect
-            subImages.append(cv2.getRectSubPix(mask, (w+20,h+20), (x+(w/2),y+(h/2))))
+            sImg = SubImage(x,y,cv2.getRectSubPix(threshedImage,(w+20,h+20),(x+(w/2),y+(h/2))))
+            subImages.append(sImg)
         else:
             break
-    for img in subImages:
-        hsv_thresh = cv2.bitwise_and(hsv,hsv,mask=mask)
-        rgb_thresh = cv2.bitwise_and(image,image,mask=mask)
+    #print(subImages[0])
+    #im2.set_data(subImages[0].img)
+    print(len(subImages))
+    for m in subImages:
+        #hsv_thresh = cv2.bitwise_and(hsv,hsv,mask=m)
+        #rgb_thresh = cv2.bitwise_and(image,image,mask=m)
+        hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
         threshGreen = cv2.inRange(hsv_thresh,(15,100,10),(35,255,255))
-        threshRed = cv2.inRange(rgb_thresh, (220,0,0), (255,180,180))
+        threshRed = cv2.inRange(m.img, (220,0,0), (255,180,180))
         #Blue contour
         xRed,yRed = checkPoint(threshRed)
         #Red contour
         xBlue,yBlue = checkPoint(threshGreen)
+        xRed += m.x
+        xBlue += m.x
+        yRed += m.y
+        yBlue += m.y
         cv2.line(image, (xBlue,yBlue), (xRed, yRed), (255,0,0), thickness=3)
-        im1.set_data(image)
-        im2.set_data(hsv)
+    im1.set_data(image)
+        #im2.set_data(hsv)
         # im2.set_data(cv2.cvtColor(hsv_thresh, cv2.COLOR_HSV2RGB))
-    # cv2.imwrite("F.png", image)
+    # cv2.imwrite("MultipleLetters.png", cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     # time.sleep(1)
+class SubImage:
+    x = 0
+    y = 0
+    img = np.array([[0]])
+    def __init__(self, _x, _y, _img):
+        self.x = _x
+        self.y = _y
+        self.img = _img
+
 
 def checkPoint(img_in):
     contours, heirarchy = cv2.findContours(img_in, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -74,7 +94,7 @@ def zedMain():
     runtime.sensing_mode = sl.SENSING_MODE.SENSING_MODE_STANDARD
     while zed.grab(runtime) != sl.ERROR_CODE.SUCCESS:
         pass
-    zed.set_camera_settings(sl.CAMERA_SETTINGS.CAMERA_SETTINGS_EXPOSURE, 15, False)
+    zed.set_camera_settings(sl.CAMERA_SETTINGS.CAMERA_SETTINGS_EXPOSURE, 10, False)
     while zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
         zed.retrieve_image(image_zed, sl.VIEW.VIEW_LEFT)
         image_callback(cv2.cvtColor(image_zed.get_data(), cv2.COLOR_RGB2BGR))
@@ -82,7 +102,7 @@ def zedMain():
 
 def staticImageMain():
     # img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/TImage.png")
-    img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/F.png")    
+    img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/MultipleLetters.png")    
     image_callback(img)
     #im2.set_data(img)
 
