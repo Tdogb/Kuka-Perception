@@ -6,7 +6,7 @@ import numpy as np
 import pyzed.sl as sl
 import matplotlib.pyplot as plt
 
-usingZed = False
+usingZed = True
 # 3840
 img_width = 1920 if usingZed else 1920
 img_height = 1080
@@ -35,26 +35,28 @@ def image_callback(image):
     highestContourArea = cv2.contourArea(contours[0])
     subImages = []
     threshedImage = cv2.bitwise_and(image,image,mask=mask)
-    print(contours)
+    #print(contours)
     cv2.drawContours(image, contours, -1, (0,0,255))
     # im2.set_data(mask)
     for cnt in contours:
-        if True: # cv2.contourArea(cnt) > highestContourArea - (highestContourArea/2):
+        if cv2.contourArea(cnt) > highestContourArea - (highestContourArea/2):
             rect = cv2.boundingRect(cnt)
             x,y,w,h = rect
             sImg = SubImage(x,y,cv2.getRectSubPix(threshedImage,(w+20,h+20),(x+(w/2),y+(h/2))))
             subImages.append(sImg)
+            im2.set_data(sImg.img)
         else:
             break
     #print(subImages[0])
     #im2.set_data(subImages[0].img)
-    print(len(subImages))
+    #print(len(subImages))
     for m in subImages:
         #hsv_thresh = cv2.bitwise_and(hsv,hsv,mask=m)
         #rgb_thresh = cv2.bitwise_and(image,image,mask=m)
         hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
         threshGreen = cv2.inRange(hsv_thresh,(15,100,10),(35,255,255))
-        threshRed = cv2.inRange(m.img, (220,0,0), (255,180,180))
+        threshRed = cv2.inRange(m.img, (210,10,10), (255,180,180))
+        divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
         #Blue contour
         xRed,yRed = checkPoint(threshRed)
         #Red contour
@@ -64,7 +66,7 @@ def image_callback(image):
         yRed += m.y
         yBlue += m.y
         cv2.line(image, (xBlue,yBlue), (xRed, yRed), (255,0,0), thickness=3)
-        im2.set_data(m.img)
+        # im2.set_datqa(m.img)
     im1.set_data(image)
         #im2.set_data(hsv)
         # im2.set_data(cv2.cvtColor(hsv_thresh, cv2.COLOR_HSV2RGB))
