@@ -20,6 +20,37 @@ tempImage = np.zeros((img_height,img_width,3))
 im1 = ax1.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
 im2 = ax2.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
 
+greenHueMaxAx = plt.axes([0.25, 0.1, 0.65, 0.03])
+greenHueMinAx = plt.axes([0.25, 0.15, 0.65, 0.03])
+redHueMaxAx = plt.axes([0.25, 0.2, 0.65, 0.03])
+redHueMinAx = plt.axes([0.25, 0.25, 0.65, 0.03])
+
+greenSatMaxAx = plt.axes([0.25, 0.3, 0.65, 0.03])
+greenSatMinAx = plt.axes([0.25, 0.35, 0.65, 0.03])
+redSatMaxAx = plt.axes([0.25, 0.4, 0.65, 0.03])
+redSatMinAx = plt.axes([0.25, 0.45, 0.65, 0.03])
+
+greenValMaxAx = plt.axes([0.25, 0.5, 0.65, 0.03])
+greenValMinAx = plt.axes([0.25, 0.55, 0.65, 0.03])
+redValMaxAx = plt.axes([0.25, 0.6, 0.65, 0.03])
+redValMinAx = plt.axes([0.25, 0.65, 0.65, 0.03])
+
+
+b1 = plt.Slider(greenHueMaxAx, 'Green Hue Max', 0, 255)
+b2 = plt.Slider(greenHueMinAx, 'Green Hue Min', 0, 255)
+b3 = plt.Slider(redHueMaxAx, 'Red Hue Max', 0, 255)
+b4 = plt.Slider(redHueMinAx, 'Red Hue Min', 0, 255)
+
+b5 = plt.Slider(greenSatMaxAx, 'Green Sat Max', 0, 255)
+b6 = plt.Slider(greenSatMinAx, 'Green Sat Min', 0, 255)
+b7 = plt.Slider(redSatMaxAx, 'Red Sat Max', 0, 255)
+b8 = plt.Slider(redSatMinAx, 'Red Sat Min', 0, 255)
+
+b9 = plt.Slider(greenValMaxAx, 'Green Val Max', 0, 255)
+b10 = plt.Slider(greenValMinAx, 'Green Val Min', 0, 255)
+b11 = plt.Slider(redValMaxAx, 'Red Val Max', 0, 255)
+b12 = plt.Slider(redValMinAx, 'Red Val Min', 0, 255)
+
 plt.ion()
 
 def image_callback(image):
