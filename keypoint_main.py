@@ -12,15 +12,11 @@ img_width = 1920 if usingZed else 1920
 img_height = 1080
 
 zed = sl.Camera()
-fig1 = plt.figure(1)
-ax1 = fig1.add_subplot(121)
-ax2 = fig1.add_subplot(122)
+
+cv2.namedWindow("d", cv2.WINDOW_NORMAL)
 
 tempImage = np.zeros((img_height,img_width,3))
-im1 = ax1.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
-im2 = ax2.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
-
-plt.ion()
+# cv2.imshow("d", tempImage)
 
 def image_callback(image):
     grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -44,7 +40,6 @@ def image_callback(image):
             x,y,w,h = rect
             sImg = SubImage(x,y,cv2.getRectSubPix(threshedImage,(w+20,h+20),(x+(w/2),y+(h/2))))
             subImages.append(sImg)
-            im2.set_data(sImg.img)
         else:
             break
     #print(subImages[0])
@@ -56,7 +51,7 @@ def image_callback(image):
         hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
         threshGreen = cv2.inRange(hsv_thresh,(15,100,10),(35,255,255))
         threshRed = cv2.inRange(m.img, (210,10,10), (255,180,180))
-        divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
+        #divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
         #Blue contour
         xRed,yRed = checkPoint(threshRed)
         #Red contour
@@ -67,7 +62,7 @@ def image_callback(image):
         yBlue += m.y
         cv2.line(image, (xBlue,yBlue), (xRed, yRed), (255,0,0), thickness=3)
         # im2.set_datqa(m.img)
-    im1.set_data(image)
+    cv2.imshow("d", image)
         #im2.set_data(hsv)
         # im2.set_data(cv2.cvtColor(hsv_thresh, cv2.COLOR_HSV2RGB))
     # cv2.imwrite("MultipleLetters2.png", cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -103,12 +98,14 @@ def zedMain():
     while zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
         zed.retrieve_image(image_zed, sl.VIEW.VIEW_LEFT)
         image_callback(cv2.cvtColor(image_zed.get_data(), cv2.COLOR_RGB2BGR))
-        plt.pause(0.001)
+        cv2.waitKey(0)
+        #plt.pause(0.001)
 
 def staticImageMain():
     # img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/TImage.png")
     img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/MultipleLetters2_edit.png")
     image_callback(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    cv2.waitKey(0)
     #im2.set_data(img)
 
 def initCamera():
@@ -134,5 +131,3 @@ if __name__ == "__main__":
         zedMain()
     else:
         staticImageMain()
-    plt.ioff()
-    plt.show() 
