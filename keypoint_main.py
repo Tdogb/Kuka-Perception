@@ -5,7 +5,8 @@ import cv2
 import numpy as np
 import pyzed.sl as sl
 import matplotlib.pyplot as plt
-
+from tensorflow import keras
+import tensorflow as tf
 usingZed = True
 # 3840
 img_width = 1920 if usingZed else 1920
@@ -20,73 +21,111 @@ tempImage = np.zeros((img_height,img_width,3))
 im1 = ax1.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
 im2 = ax2.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
 
-greenHueMaxAx = plt.axes([0.25, 0.1, 0.65, 0.03])
-greenHueMinAx = plt.axes([0.25, 0.15, 0.65, 0.03])
-redHueMaxAx = plt.axes([0.25, 0.2, 0.65, 0.03])
-redHueMinAx = plt.axes([0.25, 0.25, 0.65, 0.03])
+maxContoursAx = plt.axes([0.25, 0.1, 0.65, 0.03])
+b1 = plt.Slider(maxContoursAx, 'c', 0,100000, valinit=100)
 
-greenSatMaxAx = plt.axes([0.25, 0.3, 0.65, 0.03])
-greenSatMinAx = plt.axes([0.25, 0.35, 0.65, 0.03])
-redSatMaxAx = plt.axes([0.25, 0.4, 0.65, 0.03])
-redSatMinAx = plt.axes([0.25, 0.45, 0.65, 0.03])
-
-greenValMaxAx = plt.axes([0.25, 0.5, 0.65, 0.03])
-greenValMinAx = plt.axes([0.25, 0.55, 0.65, 0.03])
-redValMaxAx = plt.axes([0.25, 0.6, 0.65, 0.03])
-redValMinAx = plt.axes([0.25, 0.65, 0.65, 0.03])
+alphabetModel = keras.models.load_model('alphabetTrained26.h5')
+print("Finished loaded trained weights")
 
 
-b1 = plt.Slider(greenHueMaxAx, 'Green Hue Max', 0, 255)
-b2 = plt.Slider(greenHueMinAx, 'Green Hue Min', 0, 255)
-b3 = plt.Slider(redHueMaxAx, 'Red Hue Max', 0, 255)
-b4 = plt.Slider(redHueMinAx, 'Red Hue Min', 0, 255)
+testImgDir = '/home/sa-zhao/Desktop/tensorFlow/Alphabet_implementation/test_images'
+CATEGORIES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
 
-b5 = plt.Slider(greenSatMaxAx, 'Green Sat Max', 0, 255)
-b6 = plt.Slider(greenSatMinAx, 'Green Sat Min', 0, 255)
-b7 = plt.Slider(redSatMaxAx, 'Red Sat Max', 0, 255)
-b8 = plt.Slider(redSatMinAx, 'Red Sat Min', 0, 255)
+def prepare(img):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    IMG_HEIGHT = 50
+    imgArr = img
+    imgArr = cv2.resize(imgArr, (IMG_HEIGHT, IMG_HEIGHT))
+    lowerBound = np.array([20, 100, 130])
+    upperBound = np.array([250, 255, 255])
+    maskImg = cv2.inRange(imgArr, lowerBound, upperBound)
+    return maskImg.reshape(-1, IMG_HEIGHT, IMG_HEIGHT, 1)
 
-b9 = plt.Slider(greenValMaxAx, 'Green Val Max', 0, 255)
-b10 = plt.Slider(greenValMinAx, 'Green Val Min', 0, 255)
-b11 = plt.Slider(redValMaxAx, 'Red Val Max', 0, 255)
-b12 = plt.Slider(redValMinAx, 'Red Val Min', 0, 255)
+# greenHueMaxAx = plt.axes([0.25, 0.1, 0.65, 0.03])
+# greenHueMinAx = plt.axes([0.25, 0.15, 0.65, 0.03])
+# redHueMaxAx = plt.axes([0.25, 0.2, 0.65, 0.03])
+# redHueMinAx = plt.axes([0.25, 0.25, 0.65, 0.03])
 
-plt.ion()
+# greenSatMaxAx = plt.axes([0.25, 0.3, 0.65, 0.03])
+# greenSatMinAx = plt.axes([0.25, 0.35, 0.65, 0.03])
+# redSatMaxAx = plt.axes([0.25, 0.4, 0.65, 0.03])
+# redSatMinAx = plt.axes([0.25, 0.45, 0.65, 0.03])
 
+# greenValMaxAx = plt.axes([0.25, 0.5, 0.65, 0.03])
+# greenValMinAx = plt.axes([0.25, 0.55, 0.65, 0.03])
+# redValMaxAx = plt.axes([0.25, 0.6, 0.65, 0.03])
+# redValMinAx = plt.axes([0.25, 0.65, 0.65, 0.03])
+
+
+# b1 = plt.Slider(greenHueMaxAx, 'Green Hue Max', 0, 255, valinit=1)
+# b2 = plt.Slider(greenHueMinAx, 'Green Hue Min', 0, 255)
+# b3 = plt.Slider(redHueMaxAx, 'Red Hue Max', 0, 255)
+# b4 = plt.Slider(redHueMinAx, 'Red Hue Min', 0, 255)
+
+# b5 = plt.Slider(greenSatMaxAx, 'Green Sat Max', 0, 255)
+# b6 = plt.Slider(greenSatMinAx, 'Green Sat Min', 0, 255)
+# b7 = plt.Slider(redSatMaxAx, 'Red Sat Max', 0, 255)
+# b8 = plt.Slider(redSatMinAx, 'Red Sat Min', 0, 255)
+
+# b9 = plt.Slider(greenValMaxAx, 'Green Val Max', 0, 255)
+# b10 = plt.Slider(greenValMinAx, 'Green Val Min', 0, 255)
+# b11 = plt.Slider(redValMaxAx, 'Red Val Max', 0, 255)
+# b12 = plt.Slider(redValMinAx, 'Red Val Min', 0, 255)
+
+# plt.ion()
+
+contourSizeThresh = 100
+
+def update(val):
+    contourSizeThresh = val
+    print(contourSizeThresh)
+
+b1.on_changed(update)
 def image_callback(image):
-    grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image_small = cv2.resize(image,(640,360))
+    image_large = cv2.resize(image, (1920,1080))
+    grayscale = cv2.cvtColor(image_large, cv2.COLOR_BGR2GRAY)
     hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
-    blur = cv2.GaussianBlur(grayscale,(5,5),0)
+    blur = cv2.GaussianBlur(grayscale,(21,21),0)
     ret, thresh = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     kernel = np.ones((15,15),np.uint8)
     mask = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
     # Separate into subimages
     contours, heirarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
-    highestContourArea = cv2.contourArea(contours[0])
+    #contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    #highestContourArea = cv2.contourArea(contours[0])
     subImages = []
     threshedImage = cv2.bitwise_and(image,image,mask=mask)
     #print(contours)
     cv2.drawContours(image, contours, -1, (0,0,255))
     # im2.set_data(mask)
     for cnt in contours:
-        if cv2.contourArea(cnt) > highestContourArea - (highestContourArea/2):
+        #print(cv2.contourArea(cnt))
+        if cv2.contourArea(cnt) > contourSizeThresh:#cv2.contourArea(cnt) > highestContourArea - (highestContourArea/2):
             rect = cv2.boundingRect(cnt)
             x,y,w,h = rect
             sImg = SubImage(x,y,cv2.getRectSubPix(threshedImage,(w+20,h+20),(x+(w/2),y+(h/2))))
             subImages.append(sImg)
-            im2.set_data(sImg.img)
+            #im2.set_data(sImg.img)
         else:
             break
     #print(subImages[0])
     #im2.set_data(subImages[0].img)
-    #print(len(subImages))
+    print(len(subImages))
     for m in subImages:
+        prepedImg = np.float32(prepare(m.img))
+        prediction = alphabetModel.predict([prepedImg])
+        #print(np.argmax(prediction[0]))
+        if CATEGORIES[np.argmax(prediction[0])] == 'F':
+            print("f")
+        print(CATEGORIES[np.argmax(prediction[0])])
         #hsv_thresh = cv2.bitwise_and(hsv,hsv,mask=m)
         #rgb_thresh = cv2.bitwise_and(image,image,mask=m)
         hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
-        threshGreen = cv2.inRange(hsv_thresh,(15,100,10),(35,255,255))
-        threshRed = cv2.inRange(m.img, (210,10,10), (255,180,180))
+        hsv_inv_thresh = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        threshGreen = cv2.inRange(hsv_thresh,(15,40,10),(70,255,255))
+        threshRed = cv2.inRange(hsv_thresh, (100,175,140),(150,255,255))#, (210,10,10), (255,180,180))
         divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
         #Blue contour
         xRed,yRed = checkPoint(threshRed)
@@ -97,7 +136,7 @@ def image_callback(image):
         yRed += m.y
         yBlue += m.y
         cv2.line(image, (xBlue,yBlue), (xRed, yRed), (255,0,0), thickness=3)
-        # im2.set_datqa(m.img)
+        im2.set_data(m.img)
     im1.set_data(image)
         #im2.set_data(hsv)
         # im2.set_data(cv2.cvtColor(hsv_thresh, cv2.COLOR_HSV2RGB))
