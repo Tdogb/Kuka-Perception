@@ -3,11 +3,13 @@ import rospy
 import cv2
 import numpy as np
 from sensor_msgs.msg import Image, PointCloud, PointCloud2
-from sklearn.neighbors import NearestNeighbors
+# from sklearn.neighbors import NearestNeighbors
 from cv_bridge import CvBridge, CvBridgeError
 import math
 import matplotlib.pyplot as plt
 import pdb
+import tensorflow as tf
+from tensorflow import keras
 
 bridge = CvBridge()
 image_pub = rospy.Publisher("image_publisher_zed_camera", Image, queue_size=10)
@@ -21,24 +23,44 @@ lower_color_bounds = np.array([75,75,100])
 
 filenum = 0
 
+alphabetModel = keras.models.load_model('alphabetTrained26.h5')
+print("Finished loaded trained weights")
+
+
+testImgDir = '/home/tannerliu/Desktop/tensorFlow/Alphabet_implementation/test_images'
+CATEGORIES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+
+
+
+def prepare(img):
+    IMG_HEIGHT = 50
+    imgArr = img
+    imgArr = cv2.resize(imgArr, (IMG_HEIGHT, IMG_HEIGHT))
+    lowerBound = np.array([20, 100, 130])
+    upperBound = np.array([250, 255, 255])
+    maskImg = cv2.inRange(imgArr, lowerBound, upperBound)
+    return maskImg.reshape(-1, IMG_HEIGHT, IMG_HEIGHT, 1)
+
+
 def image_callback(data):
     global filenum
     alpha_image = bridge.imgmsg_to_cv2(data)
     image_large = alpha_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    # image_threshold_hsv = cv2.inRange(image, (0,61,98), (33,255,255))
-    image_threshold_hsv = cv2.inRange(image, (0,61,98), (33,255,255))
-
+    # image_threshold_hsv = cv2.inRange(image, (60,120,180), (255,255,255))
+    image_threshold_hsv = cv2.inRange(image, (60,120,180), (255,255,255))
     contour_image = np.uint8(image_threshold_hsv)
     contours, heirarchy = cv2.findContours(contour_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-    sub_images = [None] * len(contours)
+    #sub_images = [None] * len(contours)
+    sub_images = []
+    # mask_images = []
     i = 0
     contouri = 0
     output_contour_index = 0
     for c in contours:
-        if cv2.contourArea(contours[contouri]) > 30:
+        if heirarchy[0,contouri,3] == -1 and cv2.contourArea(contours[contouri]) > 30:
             output_contour_index = contouri
             rect = cv2.boundingRect(c)
             x,y,w,h = rect
@@ -46,63 +68,97 @@ def image_callback(data):
                 h = w
             if h > w:
                 w = h
-            sub_images[i] = cv2.getRectSubPix(image,(w+20,h+20),(x+(w/2),y+(h/2)))
-            sub_images[i] = cv2.resize(sub_images[i], (64,64))
-            #cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1
+            tempMask = np.zeros_like(image)
+            cv2.drawContours(tempMask, contours, contouri, (255, 255, 255), thickness=cv2.FILLED)
+            tempImage = cv2.bitwise_and(image,image,mask=tempMask[:,:,0])
+            img = cv2.getRectSubPix(tempImage,(w+20,h+20),(x+(w/2),y+(h/2)))
+            # mask = cv2.getRectSubPix(mask,(w+20,h+20),(x+(w/2),y+(h/2)))
+            # sMaskImg = SubImage(x,y,mask)
+            sImg = SubImage(x,y,img)
+            sub_images.append(sImg)
+            # mask_images.append(sMaskImg)
+            cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1)
             i+=1
         contouri +=1
-    # Begin ICP
-    # tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [4,-23],[4,18],[17,18],[17,25.3]])
-    tMesh = np.array([[-4,-23],[-4,18],[-17,18],[-17,25.3], [17,25.3],[17,18],[4,18],[4,-23]])
-    rotationMatrix = np.matrix([[0,-1],[1,0]])
-    tMeshMat = np.asmatrix(tMesh).T
-    tRotatedMat = np.empty_like(tMeshMat)
-    for i in range(0, np.size(tMeshMat,1)):
-        tRotatedMat[:,i] = rotationMatrix * tMeshMat[:,i]
-    tRotatedMeshArr = np.asarray(tRotatedMat.T)
-    #print(tMesh)
-    #print(tRotatedMeshArr)
-    #print(" ")
-    testMesh = np.array([[0,0],[2,1],[3,2],[4,4]])
-    #generateRefMesh(testMesh, 4, 16)
-    #print(contours[output_contour_index].shape[0])
+    ros_image = bridge.cv2_to_imgmsg(sub_images[0].img)
+    for m in sub_images:
+        if m is not None:
+            # ratioMaskTemp = cv2.inRange(m.img, (15,15,15), (255,255,255))
+            #ratioMask = cv2.threshold(ratioMaskTemp, 1, 255, cv2.THRESH_BINARY)
+            ratioMask = m.img[:,:,1] // m.img[:,:,0]
+            ratioMask2 = m.img[:,:,0] // m.img[:,:,1]
+            #print(ratioMask)
+            hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
+            ratioTemp = m.img[:,:,0] / m.img[:,:,1]
+            ratioTemp2 = m.img[:,:,1] / m.img[:,:,0]
+            ratioTemp *= 255
+            ratioTemp2 *= 255
+            ratio = ratioTemp.astype(np.uint8)
 
-    #a,b,c = best_fit_transform(tMesh, tRotatedMeshArr)
-    #print(b)
-    # End ICP
+            # ratio = cv2.bitwise_and(ratio, ratio, mask=ratioMask)
+            # ratio = cv2.bitwise_not(ratio,ratioMask)
 
-    print("Contours shape")
-    print(contours[output_contour_index].shape)
-    a,b,c = best_fit_transform(np.squeeze(contours[output_contour_index]),generateRefMesh(tMesh, contours[output_contour_index].shape[0]))
-    print(b)
-    vec = np.matrix([[0],[1]])
-    movedVec = np.squeeze(10*(b*vec))
-    print("Moved vec")
-    print(movedVec[0,1])
-    first = math.ceil(movedVec[0,0])+200
-    second = math.ceil(movedVec[0,1])+200
-    print(first)
-    print(second)
-    cv2.arrowedLine(image, (200,200), (first,second), (0,255,0))
+            ratio2 = ratioTemp2.astype(np.uint8)
+            # ratio2 = cv2.bitwise_and(ratio2, ratio2, mask=ratioMask2)
+            # ratio2 = cv2.bitwise_not(ratio2,cv2.bitwise_not(ratioMask2))
 
-    cv2.drawContours(image, contours, -1, (0, 255, 0), 1)
-    ros_image = bridge.cv2_to_imgmsg(sub_images[0])
+            # threshGreen = cv2.inRange(hsv_thresh,(15,40,10),(70,255,255))
+            # threshRed = cv2.inRange(hsv_thresh, (100,175,140),(150,255,255))#, (210,10,10), (255,180,180))
+            threshRed = cv2.inRange(m.img, (0,0,220), (50,130,255))
+            threshGreen = cv2.inRange(m.img, (0,75,0), (110,255,80))
+            ros_image = bridge.cv2_to_imgmsg(ratio)
+            
+            
+            #divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
+            #Blue contour
+            xRed,yRed = checkPoint(threshRed)
+            #Red contour
+            xBlue,yBlue = checkPoint(threshGreen)
+            xRed += m.x
+            xBlue += m.x
+            yRed += m.y
+            yBlue += m.y
+            cv2.line(image, (xBlue,yBlue), (xRed, yRed), (0,255,0), thickness=2)
+            prepedImg = np.float32(prepare(cv2.resize(m.img,(64,64))))
+            #prepedImg = np.float32(prepare(os.path.join(testImgDir, 'I/I.194.png')))
+            prediction = alphabetModel.predict([prepedImg])
+            #print(CATEGORIES[int(prediction[0][0])])
+            #print(np.argmax(prediction[0]))
+            #print(CATEGORIES[np.argmax(prediction[0])])
+
+
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
-    filename = 'I.' + str(filenum) + '.png'
+    # filename = 'TestImage' + str(filenum) + '.png'
+    filename = 'TestDots2.png'
     filenum+=1  
-    #cv2.imwrite(filename,sub_images[0])
-
-    # print("tshape")
-    # print("Contour shape")
-    # print(contours.shape)
-    #print(contours[output_contour_index])
-    # print(tMesh.shape[0])
+    # cv2.imwrite(filename,image)
 
 
 rospy.init_node("perception_node")
 image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, image_callback)
+
+class SubImage:
+    x = 0
+    y = 0
+    img = np.array([[0]])
+    def __init__(self, _x, _y, _img):
+        self.x = _x
+        self.y = _y
+        self.img = _img
+
+
+def checkPoint(img_in):
+    contours, heirarchy = cv2.findContours(img_in, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    x = 0
+    y = 0
+    w = 0
+    h = 0
+    if len(contours) > 0:
+        rect = cv2.boundingRect(max(contours, key=cv2.contourArea))
+        x,y,w,h = rect
+    return x,y
 
 def generateRefMesh(inputArray, desiredSize):
     arraySize = inputArray.shape[0]
