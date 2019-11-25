@@ -92,7 +92,8 @@ def image_callback(data):
             cv2.drawContours(tempMask, contours, contouri, (255, 255, 255), thickness=cv2.FILLED)
             #tempImage = cv2.bitwise_and(image,image,mask=tempMask[:,:,0])
             tempImage = image
-            img = cv2.getRectSubPix(tempImage,(w+20,h+20),(x+(w/2),y+(h/2)))
+            # +20
+            img = cv2.getRectSubPix(tempImage,(w,h),(x+(w/2),y+(h/2)))
             # mask = cv2.getRectSubPix(mask,(w+20,h+20),(x+(w/2),y+(h/2)))
             # sMaskImg = SubImage(x,y,mask)
             sImg = SubImage(x,y,img)
@@ -147,7 +148,7 @@ def image_callback(data):
             threshRed = cv2.inRange(m.img, (0,0,220), (50,130,255))
             threshGreen = cv2.inRange(m.img, (0,75,0), (110,255,80))
             ros_image = bridge.cv2_to_imgmsg(m.img)
-            ros_image_3 = bridge.cv2_to_imgmsg(ratio)
+            #ros_image_3 = bridge.cv2_to_imgmsg(ratio)
             
             
             #divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
