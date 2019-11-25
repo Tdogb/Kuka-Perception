@@ -1,27 +1,21 @@
 import time
-import sys
 import rospy
 import cv2
 import numpy as np
+import subprocess
+from sensor_msgs.msg import Image, PointCloud, PointCloud2
+from cv_bridge import CvBridge, CvBridgeError
 import math
 import matplotlib.pyplot as plt
 import pdb
-import pyzed.sl as sl
 import tensorflow as tf
 from tensorflow import keras
 
-usingZed = True
-img_width = 1920 if usingZed else 1920
-img_height = 1080
-zed = sl.Camera()
-#cv2.namedWindow("d", cv2.WINDOW_NORMAL)
-fig1 = plt.figure(1)
-ax1 = fig1.add_subplot(121)
-ax2 = fig1.add_subplot(122)
+bridge = CvBridge()
+image_pub = rospy.Publisher("image_publisher_zed_camera", Image, queue_size=10)
+image_pub2 = rospy.Publisher("image_2", Image, queue_size=10)
+image_pub3 = rospy.Publisher("image_3", Image, queue_size=10)
 
-tempImage = np.zeros((img_height,img_width,3))
-im1 = ax1.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
-im2 = ax2.imshow(tempImage,cmap = 'gray',vmin=0,vmax=255)
 img_width = 640
 img_height = 360
 
@@ -35,26 +29,47 @@ print("Finished loaded trained weights")
 
 
 testImgDir = '/home/tannerliu/Desktop/tensorFlow/Alphabet_implementation/test_images'
-CATEGORIES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-plt.ion()
+CATEGORIES = ["A", "B", "D", "E", "F", "G", "H", "K", "M", "N", "P", "Q", "R", "T", "V", "Y"]
+
+def skeletonize(img):
+    cv = cv2
+    size = np.size(img)
+    skel = np.zeros(img.shape, np.uint8)
+    ret, img = cv.threshold(img, 127, 255,0)
+    element = cv.getStructuringElement(cv.MORPH_CROSS, (3,3))
+    done = False
+    while (not done):
+        eroded = cv.erode(img, element)
+        temp = cv.dilate(eroded, element)
+        temp = cv.subtract(img, temp)
+        skel = cv.bitwise_or(skel,temp)
+        img = eroded.copy()
+        zeros = size - cv.countNonZero(img)
+        if zeros == size:
+            done = True
+    return skel
+
 def prepare(img):
     IMG_HEIGHT = 50
     imgArr = img
+    if (imgArr.shape[1] > 50):
+        imgArr = cv2.blur(imgArr, (3,3))
     imgArr = cv2.resize(imgArr, (IMG_HEIGHT, IMG_HEIGHT))
     lowerBound = np.array([20, 100, 130])
     upperBound = np.array([250, 255, 255])
     maskImg = cv2.inRange(imgArr, lowerBound, upperBound)
+    #maskImg = skeletonize(maskImg)
     return maskImg.reshape(-1, IMG_HEIGHT, IMG_HEIGHT, 1)
 
 
 def image_callback(data):
     global filenum
-    alpha_image = data
+    alpha_image = bridge.imgmsg_to_cv2(data)
     image_large = alpha_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     # image_threshold_hsv = cv2.inRange(image, (60,120,180), (255,255,255))
-    image_threshold_hsv = cv2.inRange(image, (60,120,180), (255,255,255))
+    image_threshold_hsv = cv2.inRange(image, (50,110,170), (255,255,255))
     contour_image = np.uint8(image_threshold_hsv)
     contours, heirarchy = cv2.findContours(contour_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
@@ -75,42 +90,65 @@ def image_callback(data):
                 w = h
             tempMask = np.zeros_like(image)
             cv2.drawContours(tempMask, contours, contouri, (255, 255, 255), thickness=cv2.FILLED)
-            tempImage = cv2.bitwise_and(image,image,mask=tempMask[:,:,0])
+            #tempImage = cv2.bitwise_and(image,image,mask=tempMask[:,:,0])
+            tempImage = image
             img = cv2.getRectSubPix(tempImage,(w+20,h+20),(x+(w/2),y+(h/2)))
             # mask = cv2.getRectSubPix(mask,(w+20,h+20),(x+(w/2),y+(h/2)))
             # sMaskImg = SubImage(x,y,mask)
             sImg = SubImage(x,y,img)
             sub_images.append(sImg)
             # mask_images.append(sMaskImg)
-            cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1)
+
+            #cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1)
             i+=1
         contouri +=1
-    # ros_image = bridge.cv2_to_imgmsg(sub_images[0].img)
+    ros_image = bridge.cv2_to_imgmsg(sub_images[0].img)
+    ros_image_3 = bridge.cv2_to_imgmsg(sub_images[0].img)
     for m in sub_images:
         if m is not None:
             # ratioMaskTemp = cv2.inRange(m.img, (15,15,15), (255,255,255))
             #ratioMask = cv2.threshold(ratioMaskTemp, 1, 255, cv2.THRESH_BINARY)
-            ratioMask = m.img[:,:,1] // m.img[:,:,0]
-            ratioMask2 = m.img[:,:,0] // m.img[:,:,1]
-            #print(ratioMask)
-            hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
-            ratioTemp = m.img[:,:,0] / m.img[:,:,1]
-            ratioTemp2 = m.img[:,:,1] / m.img[:,:,0]
+            
+            
+            # ratioMask = m.img[:,:,2] // m.img[:,:,1]
+            # ratioMask2 = m.img[:,:,1] // m.img[:,:,2]
+            # kernel = np.ones((5,5),np.uint8)
+            # ratioMask = cv2.dilate(ratioMask,kernel)
+
+
+
+
+            # #print(ratioMask)
+            # hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
+            # tempImg = cv2.inRange(hsv_thresh, (0,0,100),(255,255,255))
+            # m.img = cv2.bitwise_and(m.img,m.img, mask=tempImg)
+            # m.img = cv2.cvtColor(m.img, cv2.COLOR_HSV2BGR)
+
+            '''
+            ratioTemp = np.divide(m.img[:,:,1],m.img[:,:,2], where=m.img[:,:,2] != 0)
+            ratioTemp2 = np.divide(m.img[:,:,2],m.img[:,:,1], where=m.img[:,:,1] != 0)
             ratioTemp *= 255
             ratioTemp2 *= 255
             ratio = ratioTemp.astype(np.uint8)
 
-            # ratio = cv2.bitwise_and(ratio, ratio, mask=ratioMask)
-            # ratio = cv2.bitwise_not(ratio,ratioMask)
+            ratio = cv2.bitwise_and(ratio, ratio, mask=ratioMask)
+            ratio = cv2.bitwise_not(ratio,ratioMask)
 
             ratio2 = ratioTemp2.astype(np.uint8)
+            '''
             # ratio2 = cv2.bitwise_and(ratio2, ratio2, mask=ratioMask2)
             # ratio2 = cv2.bitwise_not(ratio2,cv2.bitwise_not(ratioMask2))
 
             # threshGreen = cv2.inRange(hsv_thresh,(15,40,10),(70,255,255))
             # threshRed = cv2.inRange(hsv_thresh, (100,175,140),(150,255,255))#, (210,10,10), (255,180,180))
+
+            # ratio = (m.img[:,:,1] / m.img[:,:,2]).astype(np.uint8)
+
             threshRed = cv2.inRange(m.img, (0,0,220), (50,130,255))
-            threshGreen = cv2.inRange(m.img, (0,75,0), (110,255,80))            
+            threshGreen = cv2.inRange(m.img, (0,75,0), (110,255,80))
+            ros_image = bridge.cv2_to_imgmsg(m.img)
+            ros_image_3 = bridge.cv2_to_imgmsg(ratio)
+            
             
             #divImg = np.divide(m.img[:,:,0],m.img[:,:,1])
             #Blue contour
@@ -127,13 +165,27 @@ def image_callback(data):
             prediction = alphabetModel.predict([prepedImg])
             #print(CATEGORIES[int(prediction[0][0])])
             #print(np.argmax(prediction[0]))
-            #print(CATEGORIES[np.argmax(prediction[0])])
+            print(CATEGORIES[np.argmax(prediction[0])])
+            letter = 'K'
+            path = "/home/sa-zhao/perception-python/Kuka-Perception/training_images_v2/" + letter + '/'
+            filename = path + letter + str(filenum) + '.png'
+            filenum+=1
+            #cv2.imwrite(filename,m.img)
+            time.sleep(0.02)
+            #print(filenum)
+    ros_image2 = bridge.cv2_to_imgmsg(image)
+    image_pub.publish(ros_image)
+    image_pub2.publish(ros_image2)
+    image_pub3.publish(ros_image_3)
     # filename = 'TestImage' + str(filenum) + '.png'
     filename = 'TestDots2.png'
-    filenum+=1
-    im1.set_data(image)
-    #cv2.imshow("d", image)
+    #filenum+=1
     # cv2.imwrite(filename,image)
+
+
+rospy.init_node("perception_node")
+image_sub = rospy.Subscriber("/zed/zed_node/rgb_raw/image_raw_color", Image, image_callback)
+
 class SubImage:
     x = 0
     y = 0
@@ -155,46 +207,5 @@ def checkPoint(img_in):
         x,y,w,h = rect
     return x,y
 
-def zedMain():
-    image_zed = sl.Mat(zed.get_resolution().width, zed.get_resolution().height, sl.MAT_TYPE.MAT_TYPE_8U_C4)    
-    runtime = sl.RuntimeParameters()
-    runtime.sensing_mode = sl.SENSING_MODE.SENSING_MODE_STANDARD
-    while zed.grab(runtime) != sl.ERROR_CODE.SUCCESS:
-        pass
-    zed.set_camera_settings(sl.CAMERA_SETTINGS.CAMERA_SETTINGS_EXPOSURE, 10, False)
-    while zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
-        zed.retrieve_image(image_zed, sl.VIEW.VIEW_LEFT)
-        image_callback(cv2.cvtColor(image_zed.get_data(), cv2.COLOR_RGB2BGR))
-        plt.pause(0.001)
-
-def staticImageMain():
-    # img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/TImage.png")
-    img = cv2.imread("/home/sa-zhao/perception-python/Kuka-Perception/MultipleLetters2_edit.png")
-    image_callback(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-    #im2.set_data(img)
-
-def initCamera():
-    init = sl.InitParameters()
-    init.camera_resolution = sl.RESOLUTION.RESOLUTION_HD1080
-    init.depth_mode = sl.DEPTH_MODE.DEPTH_MODE_PERFORMANCE
-    init.coordinate_units = sl.UNIT.UNIT_METER
-    if len(sys.argv) >= 2 :
-        init.svo_input_filename = sys.argv[1]
-
-    # Open the camera
-    err = zed.open(init)
-    if err != sl.ERROR_CODE.SUCCESS :
-        print(repr(err))
-        zed.close()
-        exit(1)
-    zed.set_camera_settings(sl.CAMERA_SETTINGS.CAMERA_SETTINGS_EXPOSURE, -1, True)
- 
 if __name__ == "__main__":
-    if usingZed:
-        zed.close()
-        initCamera()
-        zedMain()
-    else:
-        staticImageMain()
-    plt.ioff()
-    plt.show() 
+    rospy.spin()
