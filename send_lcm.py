@@ -5,9 +5,9 @@ from lcm import LCM
 from drake import lcmt_letters
 
 parser = argparse.ArgumentParser(description="send_lcm")
-parser.add_argument("-x", default=0)
-parser.add_argument("-y", default=0)
-parser.add_argument("-l", default='A')
+parser.add_argument("-x", default=0, type=int)
+parser.add_argument("-y", default=0, type=int)
+parser.add_argument("-l", default='A', type=str)
 args = parser.parse_args()
 def callback(self, channel, msg):
     print("entered")
@@ -16,14 +16,15 @@ def callback(self, channel, msg):
     print(msg.letter)
 
 def main():
+    print("Run")
     lcm = LCM()
     msg = lcmt_letters()
-    print(args.x)
     msg.x = args.x
-    msg.y = args[1]
-    msg.letter = args[2]
+    msg.y = args.y
+    msg.letter = args.l
     # lcm.subscribe("TEST_CHANNEL",callback)
     lcm.publish("TEST_CHANNEL",msg.encode())
+    print("finish")
 
 if __name__ == "__main__":
     main()

@@ -98,6 +98,18 @@ def image_callback(data):
             # sMaskImg = SubImage(x,y,mask)
             sImg = SubImage(x,y,img)
             sub_images.append(sImg)
+            prepedImg = np.float32(prepare(cv2.resize(img,(64,64))))
+            #prepedImg = np.float32(prepare(os.path.join(testImgDir, 'I/I.194.png')))
+            prediction = alphabetModel.predict([prepedImg])
+            #print(CATEGORIES[int(prediction[0][0])])
+            #print(np.argmax(prediction[0]))
+            
+            pythonCommand = "python2.7 send_lcm.py -x " + str(x-int(img_width/2)+int(w/2)) + " -y " + str(y-int(img_height/2)+int(h/2)) + " -l " + CATEGORIES[np.argmax(prediction[0])]
+            process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
+            #print(pythonCommand)
+            output, error = process.communicate()
+            # process.terminate()
+            # print(CATEGORIES[np.argmax(prediction[0])])
             # mask_images.append(sMaskImg)
 
             #cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1)
@@ -105,6 +117,7 @@ def image_callback(data):
         contouri +=1
     ros_image = bridge.cv2_to_imgmsg(sub_images[0].img)
     ros_image_3 = bridge.cv2_to_imgmsg(sub_images[0].img)
+    time.sleep(1)
     for m in sub_images:
         if m is not None:
             # ratioMaskTemp = cv2.inRange(m.img, (15,15,15), (255,255,255))
@@ -161,12 +174,7 @@ def image_callback(data):
             yRed += m.y
             yBlue += m.y
             cv2.line(image, (xBlue,yBlue), (xRed, yRed), (0,255,0), thickness=2)
-            prepedImg = np.float32(prepare(cv2.resize(m.img,(64,64))))
-            #prepedImg = np.float32(prepare(os.path.join(testImgDir, 'I/I.194.png')))
-            prediction = alphabetModel.predict([prepedImg])
-            #print(CATEGORIES[int(prediction[0][0])])
-            #print(np.argmax(prediction[0]))
-            print(CATEGORIES[np.argmax(prediction[0])])
+
             letter = 'K'
             path = "/home/sa-zhao/perception-python/Kuka-Perception/training_images_v2/" + letter + '/'
             filename = path + letter + str(filenum) + '.png'
