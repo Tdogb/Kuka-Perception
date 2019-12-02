@@ -1,30 +1,32 @@
 import argparse
 import pydrake.systems.lcm as mut
-from pydrake.lcm import DrakeLcm, DrakeMockLcm, Subscriber
+# from pydrake.lcm import DrakeLcm, DrakeMockLcm, Subscriber
 from lcm import LCM
 from drake import lcmt_letters
-
 parser = argparse.ArgumentParser(description="send_lcm")
-parser.add_argument("-x", default=0, type=int)
-parser.add_argument("-y", default=0, type=int)
-parser.add_argument("-l", default='A', type=str)
+parser.add_argument("-x", default=2, type=int)
+parser.add_argument("-y", default=1, type=int)
+parser.add_argument("-l", default='B', type=str)
 args = parser.parse_args()
-def callback(self, channel, msg):
+lcm_ = LCM()
+def callback(channel, msg):
     print("entered")
-    print(msg.x)
-    print(msg.y)
-    print(msg.letter)
+    newMsgC = lcmt_letters()
+    newMsg = newMsgC.decode(msg)
+    print(newMsg.x)
+    print(newMsg.y)
+    print(newMsg.letter)
 
 def main():
-    print("Run")
-    lcm = LCM()
-    msg = lcmt_letters()
-    msg.x = args.x
-    msg.y = args.y
-    msg.letter = args.l
-    # lcm.subscribe("TEST_CHANNEL",callback)
-    lcm.publish("TEST_CHANNEL",msg.encode())
-    print("finish")
+    lcm_.subscribe("TEST_CHANNEL",callback)
+    for _ in range(0,10):
+        # print("Run")
+        msg = lcmt_letters()
+        msg.x = args.x
+        msg.y = args.y
+        msg.letter = args.l
+        lcm_.publish("TEST_CHANNEL",msg.encode())
+        lcm_.handle()
 
 if __name__ == "__main__":
     main()

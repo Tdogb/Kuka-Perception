@@ -65,7 +65,14 @@ def prepare(img):
 def image_callback(data):
     global filenum
     alpha_image = bridge.imgmsg_to_cv2(data)
-    image_large = alpha_image[:,:,:3]
+    # 92:194
+    # 131:328
+    print(alpha_image.shape)
+    cropped_image = alpha_image[92*2:194*2, 131*2:328*2]
+
+    # cropped_image = alpha_image[760:1160,340:740]
+
+    image_large = cropped_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
     hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     # image_threshold_hsv = cv2.inRange(image, (60,120,180), (255,255,255))
@@ -109,7 +116,7 @@ def image_callback(data):
             #print(pythonCommand)
             output, error = process.communicate()
             # process.terminate()
-            # print(CATEGORIES[np.argmax(prediction[0])])
+            print(CATEGORIES[np.argmax(prediction[0])])
             # mask_images.append(sMaskImg)
 
             #cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1)
@@ -182,14 +189,15 @@ def image_callback(data):
             #cv2.imwrite(filename,m.img)
             time.sleep(0.02)
             #print(filenum)
+    print("Write")
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
     image_pub3.publish(ros_image_3)
     # filename = 'TestImage' + str(filenum) + '.png'
-    filename = 'TestDots2.png'
+    filename = 'NewPlace.png'
     #filenum+=1
-    # cv2.imwrite(filename,image)
+    cv2.imwrite(filename,image)
 
 
 rospy.init_node("perception_node")
