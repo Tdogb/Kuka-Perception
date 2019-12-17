@@ -4,8 +4,8 @@ import pydrake.systems.lcm as mut
 from lcm import LCM
 from drake import lcmt_letters
 parser = argparse.ArgumentParser(description="send_lcm")
-parser.add_argument("-x", default=2, type=int)
-parser.add_argument("-y", default=1, type=int)
+parser.add_argument("-x", default=2, type=float)
+parser.add_argument("-y", default=1, type=float)
 parser.add_argument("-l", default='B', type=str)
 args = parser.parse_args()
 lcm_ = LCM()
