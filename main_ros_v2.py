@@ -115,12 +115,10 @@ def image_callback(data):
             cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), thickness=1)
             cv2.putText(image, CATEGORIES[np.argmax(prediction[0])], (x,y-3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), thickness=1)
             # Calculate distance
-            cameraHeight = 1
+            cameraHeight = 1.27
             cameraFOV = (110/360)*2*math.pi
             realImageWidth = 2*(math.tan(cameraFOV/2)*cameraHeight)
             widthRatio = realImageWidth / img_width
-
-
 
             pythonCommand = "python2.7 send_lcm.py -x " + str(widthRatio*(x-int(img_width/2)+int(w/2))) + " -y " + str(widthRatio*(y-int(img_height/2)+int(h/2))) + " -l " + CATEGORIES[np.argmax(prediction[0])]
             process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
