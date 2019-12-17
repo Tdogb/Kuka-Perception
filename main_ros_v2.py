@@ -70,7 +70,8 @@ def image_callback(data):
     print(alpha_image.shape)
 
     # cropped_image = alpha_image[200:400,340:740]
-    cropped_image = alpha_image
+    cropped_image = alpha_image[150:411,286:750] #450 x261
+    # cropped_image = alpha_image
 
     image_large = cropped_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
@@ -201,7 +202,7 @@ def image_callback(data):
     # filename = 'TestImage' + str(filenum) + '.png'
     filename = 'crop_test.png'
     #filenum+=1
-    cv2.imwrite(filename,image)
+    # cv2.imwrite(filename,image)
 
 
 rospy.init_node("perception_node")
