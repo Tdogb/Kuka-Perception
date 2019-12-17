@@ -201,7 +201,7 @@ def image_callback(data):
     # filename = 'TestImage' + str(filenum) + '.png'
     filename = 'crop_test.png'
     #filenum+=1
-    cv2.imwrite(filename,image)
+    # cv2.imwrite(filename,image)
 
 
 rospy.init_node("perception_node")
