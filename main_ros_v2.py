@@ -125,7 +125,7 @@ def image_callback(data):
             cameraFOV = (110/360)*2*math.pi
             realImageWidth = 2*(math.tan(cameraFOV/2)*cameraHeight)
             widthRatio = realImageWidth / img_width
-
+            widthRatio = 0.0001875
             pythonCommand = "python2.7 send_lcm.py -x " + str(widthRatio*(x-int(img_width/2)+int(w/2))) + " -y " + str(widthRatio*(y-int(img_height/2)+int(h/2))) + " -l " + CATEGORIES[np.argmax(prediction[0])]
             print(pythonCommand)
             process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
