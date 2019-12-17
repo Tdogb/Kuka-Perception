@@ -118,8 +118,8 @@ def image_callback(data):
             cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), thickness=1)
             cv2.putText(image, CATEGORIES[np.argmax(prediction[0])], (x,y-3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), thickness=1)
             # Calculate distance
-            x += cropxbound
-            y += cropybound
+            x += (cropxbound/1280)*img_width
+            y += (cropybound/1280)*img_width
 
             cameraHeight = 1.27
             cameraFOV = (110/360)*2*math.pi
