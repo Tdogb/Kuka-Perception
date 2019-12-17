@@ -62,6 +62,8 @@ def prepare(img):
     return maskImg.reshape(-1, IMG_HEIGHT, IMG_HEIGHT, 1)
 
 
+cropxbound = 150
+cropybound = 286
 def image_callback(data):
     global filenum
     alpha_image = bridge.imgmsg_to_cv2(data)
@@ -70,7 +72,7 @@ def image_callback(data):
     # print(alpha_image.shape)
 
     # cropped_image = alpha_image[200:400,340:740]
-    cropped_image = alpha_image[150:411,286:750] #450 x261
+    cropped_image = alpha_image[cropxbound:411,cropybound:750] #450 x261
     # cropped_image = alpha_image
 
     image_large = cropped_image[:,:,:3]
@@ -116,6 +118,9 @@ def image_callback(data):
             cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), thickness=1)
             cv2.putText(image, CATEGORIES[np.argmax(prediction[0])], (x,y-3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), thickness=1)
             # Calculate distance
+            x += cropxbound
+            y += cropybound
+
             cameraHeight = 1.27
             cameraFOV = (110/360)*2*math.pi
             realImageWidth = 2*(math.tan(cameraFOV/2)*cameraHeight)
