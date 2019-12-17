@@ -68,7 +68,9 @@ def image_callback(data):
     # 92:194
     # 131:328
     print(alpha_image.shape)
-    cropped_image = alpha_image[92*2:194*2, 131*2:328*2]
+    #cropped_image = alpha_image[92*2:194*2, 131*2:328*2]
+    # cropped_image = alpha_image[184:388, 262:656]
+    cropped_image = alpha_image[200:400,340:740]
 
     # cropped_image = alpha_image[760:1160,340:740]
 
@@ -100,7 +102,7 @@ def image_callback(data):
             #tempImage = cv2.bitwise_and(image,image,mask=tempMask[:,:,0])
             tempImage = image
             # +20
-            img = cv2.getRectSubPix(tempImage,(w,h),(x+(w/2),y+(h/2)))
+            img = cv2.getRectSubPix(tempImage,(w+20,h+20),(x+(w/2),y+(h/2)))
             # mask = cv2.getRectSubPix(mask,(w+20,h+20),(x+(w/2),y+(h/2)))
             # sMaskImg = SubImage(x,y,mask)
             sImg = SubImage(x,y,img)
@@ -110,16 +112,13 @@ def image_callback(data):
             prediction = alphabetModel.predict([prepedImg])
             #print(CATEGORIES[int(prediction[0][0])])
             #print(np.argmax(prediction[0]))
-            
+            cv2.circle(image, (x+int(w/2),y+int(h/2)), 1, (0,255,0), thickness=2)
+            cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), thickness=1)
+            cv2.putText(image, CATEGORIES[np.argmax(prediction[0])], (x,y-3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), thickness=1)
             pythonCommand = "python2.7 send_lcm.py -x " + str(x-int(img_width/2)+int(w/2)) + " -y " + str(y-int(img_height/2)+int(h/2)) + " -l " + CATEGORIES[np.argmax(prediction[0])]
             process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
-            #print(pythonCommand)
             output, error = process.communicate()
-            # process.terminate()
             print(CATEGORIES[np.argmax(prediction[0])])
-            # mask_images.append(sMaskImg)
-
-            #cv2.rectangle(image, (x,y), (x+w,y+h), (255,0,0), 1)
             i+=1
         contouri +=1
     ros_image = bridge.cv2_to_imgmsg(sub_images[0].img)
@@ -180,24 +179,24 @@ def image_callback(data):
             xBlue += m.x
             yRed += m.y
             yBlue += m.y
-            cv2.line(image, (xBlue,yBlue), (xRed, yRed), (0,255,0), thickness=2)
+            # cv2.line(image, (xBlue,yBlue), (xRed, yRed), (0,255,0), thickness=2)
 
             letter = 'K'
             path = "/home/sa-zhao/perception-python/Kuka-Perception/training_images_v2/" + letter + '/'
             filename = path + letter + str(filenum) + '.png'
             filenum+=1
             #cv2.imwrite(filename,m.img)
-            time.sleep(0.02)
+            #time.sleep(0.02)
             #print(filenum)
     print("Write")
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
-    image_pub3.publish(ros_image_3)
+    # image_pub3.publish(ros_image_3)
     # filename = 'TestImage' + str(filenum) + '.png'
     filename = 'NewPlace.png'
     #filenum+=1
-    cv2.imwrite(filename,image)
+    #cv2.imwrite(filename,image)
 
 
 rospy.init_node("perception_node")
