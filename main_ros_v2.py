@@ -67,7 +67,7 @@ def image_callback(data):
     alpha_image = bridge.imgmsg_to_cv2(data)
     # 92:194
     # 131:328
-    print(alpha_image.shape)
+    # print(alpha_image.shape)
 
     # cropped_image = alpha_image[200:400,340:740]
     cropped_image = alpha_image[150:411,286:750] #450 x261
@@ -122,14 +122,15 @@ def image_callback(data):
             widthRatio = realImageWidth / img_width
 
             pythonCommand = "python2.7 send_lcm.py -x " + str(widthRatio*(x-int(img_width/2)+int(w/2))) + " -y " + str(widthRatio*(y-int(img_height/2)+int(h/2))) + " -l " + CATEGORIES[np.argmax(prediction[0])]
+            print(pythonCommand)
             process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
             output, error = process.communicate()
-            print(CATEGORIES[np.argmax(prediction[0])])
+            # print(CATEGORIES[np.argmax(prediction[0])])
             i+=1
         contouri +=1
     ros_image = bridge.cv2_to_imgmsg(sub_images[0].img)
     ros_image_3 = bridge.cv2_to_imgmsg(sub_images[0].img)
-    time.sleep(1)
+    # time.sleep(1)
     for m in sub_images:
         if m is not None:
             # ratioMaskTemp = cv2.inRange(m.img, (15,15,15), (255,255,255))
@@ -194,7 +195,7 @@ def image_callback(data):
             #cv2.imwrite(filename,m.img)
             #time.sleep(0.02)
             #print(filenum)
-    print("Write")
+    # print("Write")
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)
