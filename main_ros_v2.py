@@ -68,11 +68,9 @@ def image_callback(data):
     # 92:194
     # 131:328
     print(alpha_image.shape)
-    #cropped_image = alpha_image[92*2:194*2, 131*2:328*2]
-    # cropped_image = alpha_image[184:388, 262:656]
-    cropped_image = alpha_image[200:400,340:740]
 
-    # cropped_image = alpha_image[760:1160,340:740]
+    # cropped_image = alpha_image[200:400,340:740]
+    cropped_image = alpha_image
 
     image_large = cropped_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
@@ -112,10 +110,19 @@ def image_callback(data):
             prediction = alphabetModel.predict([prepedImg])
             #print(CATEGORIES[int(prediction[0][0])])
             #print(np.argmax(prediction[0]))
+
             cv2.circle(image, (x+int(w/2),y+int(h/2)), 1, (0,255,0), thickness=2)
             cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), thickness=1)
             cv2.putText(image, CATEGORIES[np.argmax(prediction[0])], (x,y-3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), thickness=1)
-            pythonCommand = "python2.7 send_lcm.py -x " + str(x-int(img_width/2)+int(w/2)) + " -y " + str(y-int(img_height/2)+int(h/2)) + " -l " + CATEGORIES[np.argmax(prediction[0])]
+            # Calculate distance
+            cameraHeight = 1
+            cameraFOV = (110/360)*2*math.pi
+            realImageWidth = 2*(math.tan(cameraFOV/2)*cameraHeight)
+            widthRatio = realImageWidth / img_width
+
+
+
+            pythonCommand = "python2.7 send_lcm.py -x " + str(widthRatio*(x-int(img_width/2)+int(w/2))) + " -y " + str(widthRatio*(y-int(img_height/2)+int(h/2))) + " -l " + CATEGORIES[np.argmax(prediction[0])]
             process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
             output, error = process.communicate()
             print(CATEGORIES[np.argmax(prediction[0])])
@@ -194,9 +201,9 @@ def image_callback(data):
     image_pub2.publish(ros_image2)
     # image_pub3.publish(ros_image_3)
     # filename = 'TestImage' + str(filenum) + '.png'
-    filename = 'NewPlace.png'
+    filename = 'crop_test.png'
     #filenum+=1
-    #cv2.imwrite(filename,image)
+    cv2.imwrite(filename,image)
 
 
 rospy.init_node("perception_node")
