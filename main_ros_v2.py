@@ -69,8 +69,8 @@ def image_callback(data):
     # 131:328
     print(alpha_image.shape)
 
-    # cropped_image = alpha_image[200:400,340:740]
-    cropped_image = alpha_image
+    cropped_image = alpha_image[200:400,340:740]
+    # cropped_image = alpha_image
 
     image_large = cropped_image[:,:,:3]
     image = cv2.resize(image_large, (img_width,img_height))
