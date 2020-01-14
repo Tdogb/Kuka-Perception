@@ -61,7 +61,8 @@ def prepare(img):
     #maskImg = skeletonize(maskImg)
     return maskImg.reshape(-1, IMG_HEIGHT, IMG_HEIGHT, 1)
 
-
+constantX = 300
+constantY = 0
 cropxbound = 150
 cropybound = 286
 def image_callback(data):
@@ -72,7 +73,7 @@ def image_callback(data):
     # print(alpha_image.shape)
 
     # cropped_image = alpha_image[200:400,340:740]
-    cropped_image = alpha_image[cropxbound:411,cropybound:750] #450 x261
+    cropped_image = alpha_image[cropxbound:411,cropybound+constantX:750+constantX] #450 x261
     # cropped_image = alpha_image
 
     image_large = cropped_image[:,:,:3]
@@ -118,16 +119,21 @@ def image_callback(data):
             cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), thickness=1)
             cv2.putText(image, CATEGORIES[np.argmax(prediction[0])], (x,y-3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), thickness=1)
             # Calculate distance
-            x += (cropxbound/1280)*img_width
-            y += (cropybound/1280)*img_width
+            # x += (cropxbound/1280)*img_width
+            # y += (cropybound/1280)*img_width
 
             cameraHeight = 1.27
             cameraFOV = (110/360)*2*math.pi
             realImageWidth = 2*(math.tan(cameraFOV/2)*cameraHeight)
+            #94.5cm CAMERA HEIGHT
+            realImageWidth = 0.31 #this is actually supposed to be only half of the image size, so real image size is 2x this
             widthRatio = realImageWidth / img_width
-            widthRatio = 0.0001875
-            pythonCommand = "python2.7 send_lcm.py -x " + str(widthRatio*(x-int(img_width/2)+int(w/2))) + " -y " + str(widthRatio*(y-int(img_height/2)+int(h/2))) + " -l " + CATEGORIES[np.argmax(prediction[0])]
+            # widthRatio = 0.0001875
+            widthRatio = realImageWidth*2/img_width
+            pythonCommand = "python2.7 send_lcm.py -x " + str((x+(w/2))*widthRatio-realImageWidth) + " -y " + str((y+(h/2))*widthRatio-realImageWidth*(9/16)) + " -l " + CATEGORIES[np.argmax(prediction[0])] + " -i " + str(i)
             print(pythonCommand)
+            # print((x+(w/2))*widthRatio-realImageWidth)
+            # print(x+int(w/2))
             process = subprocess.Popen(pythonCommand.split(), stdout=subprocess.PIPE)
             output, error = process.communicate()
             # print(CATEGORIES[np.argmax(prediction[0])])
@@ -146,9 +152,6 @@ def image_callback(data):
             # ratioMask2 = m.img[:,:,1] // m.img[:,:,2]
             # kernel = np.ones((5,5),np.uint8)
             # ratioMask = cv2.dilate(ratioMask,kernel)
-
-
-
 
             # #print(ratioMask)
             # hsv_thresh = cv2.cvtColor(m.img, cv2.COLOR_BGR2HSV)
@@ -201,6 +204,8 @@ def image_callback(data):
             #time.sleep(0.02)
             #print(filenum)
     # print("Write")
+    cv2.line(image, (int(img_width/2),0), (int(img_width/2),img_height), (0,255,0), thickness=2)
+    cv2.line(image, (0,int(img_height/2)), (img_width,int(img_height/2)), (0,255,0), thickness=2)
     ros_image2 = bridge.cv2_to_imgmsg(image)
     image_pub.publish(ros_image)
     image_pub2.publish(ros_image2)

@@ -7,6 +7,8 @@ parser = argparse.ArgumentParser(description="send_lcm")
 parser.add_argument("-x", default=2, type=float)
 parser.add_argument("-y", default=1, type=float)
 parser.add_argument("-l", default='B', type=str)
+parser.add_argument("-i", default=0, type=int)
+
 args = parser.parse_args()
 lcm_ = LCM()
 def callback(channel, msg):
@@ -19,14 +21,14 @@ def callback(channel, msg):
 
 def main():
     lcm_.subscribe("TEST_CHANNEL",callback)
-    for _ in range(0,10):
-        # print("Run")
-        msg = lcmt_letters()
-        msg.x = args.x
-        msg.y = args.y
-        msg.letter = args.l
-        lcm_.publish("TEST_CHANNEL",msg.encode())
-        lcm_.handle()
+    # print("Run")
+    msg = lcmt_letters()
+    msg.x = args.x
+    msg.y = args.y
+    msg.letter = args.l
+    msg.index = args.i
+    lcm_.publish("TEST_CHANNEL",msg.encode())
+    lcm_.handle()
 
 if __name__ == "__main__":
     main()
